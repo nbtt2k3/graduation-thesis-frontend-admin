@@ -58,3 +58,20 @@ export const updateUserCurrentValidation = yup.object().shape({
       return value.size <= 10 * 1024 * 1024;
     }),
 });
+
+export const passwordChangeValidation = yup.object().shape({
+  currentPassword: yup
+    .string()
+    .required("Vui lòng nhập mật khẩu hiện tại")
+    .typeError("Mật khẩu hiện tại phải là chuỗi"),
+  newPassword: yup
+    .string()
+    .min(8, "Mật khẩu mới phải có ít nhất ${min} ký tự")
+    .required("Vui lòng nhập mật khẩu mới")
+    .typeError("Mật khẩu mới phải là chuỗi"),
+  confirmNewPassword: yup
+    .string()
+    .oneOf([yup.ref("newPassword"), null], "Mật khẩu xác nhận không khớp")
+    .required("Vui lòng xác nhận mật khẩu mới")
+    .typeError("Mật khẩu xác nhận phải là chuỗi"),
+});
