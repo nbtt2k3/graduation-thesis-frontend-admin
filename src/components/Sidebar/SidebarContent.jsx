@@ -16,10 +16,10 @@ const SidebarContent = ({
       <div className="p-4">
         <div className="flex items-center justify-center">
           <div className="w-8 h-8 bg-teal-400 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">TZ</span>
+            <span className="text-white font-bold text-sm">MS</span>
           </div>
           {!isCollapsed && (
-            <span className="font-semibold text-gray-800 ml-2">TechZone</span>
+            <span className="font-semibold text-gray-800 ml-2">MobiShop</span>
           )}
         </div>
       </div>
