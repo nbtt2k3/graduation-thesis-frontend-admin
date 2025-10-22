@@ -1,13 +1,16 @@
 "use client";
 
 import React, { useState, useEffect, useContext } from "react";
-import { ArrowLeft, Upload } from "lucide-react";
+import { ArrowLeft, Upload, Eye, EyeOff } from "lucide-react";
 import * as apis from "../../apis";
 import { toast } from "react-hot-toast";
 import { AdminTechZoneContext } from "../../context/AdminTechZoneContext";
 import { CustomSelect, CustomSkeletonUserProfile } from "../../components";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { updateUserCurrentValidation } from "../../validations/user.validation";
+import {
+  updateUserCurrentValidation,
+  passwordChangeValidation,
+} from "../../validations/user.validation";
 import { useForm } from "react-hook-form";
 
 const UserProfile = () => {
@@ -15,7 +18,14 @@ const UserProfile = () => {
     useContext(AdminTechZoneContext);
   const [isUpdating, setIsUpdating] = useState(false);
   const [previewAvatar, setPreviewAvatar] = useState(null);
+  const [showPasswordSection, setShowPasswordSection] = useState(false);
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
 
+  // Form cập nhật hồ sơ
   const {
     register,
     handleSubmit,
@@ -33,6 +43,16 @@ const UserProfile = () => {
       dateOfBirth: "",
       avatar: null,
     },
+  });
+
+  // Form đổi mật khẩu
+  const {
+    register: registerPassword,
+    handleSubmit: handleSubmitPassword,
+    formState: { errors: passwordErrors },
+    reset: resetPassword,
+  } = useForm({
+    resolver: yupResolver(passwordChangeValidation),
   });
 
   const genderValue = watch("gender");
@@ -74,7 +94,7 @@ const UserProfile = () => {
     }
   };
 
-  const onSubmit = async (data) => {
+  const onSubmitProfile = async (data) => {
     try {
       setIsUpdating(true);
       const formData = new FormData();
@@ -87,17 +107,37 @@ const UserProfile = () => {
       if (data.avatar) formData.append("avatar", data.avatar);
 
       const response = await apis.apiUpdateCurrent(formData);
-
       toast.success(response?.msg || "Cập nhật hồ sơ thành công!");
-
       await fetchUser();
     } catch (error) {
-      if (error?.msg) {
-        toast.error(error.msg || "Có lỗi xảy ra khi cập nhật.");
-      }
+      toast.error(error?.msg || "Có lỗi xảy ra khi cập nhật.");
     } finally {
       setIsUpdating(false);
     }
+  };
+
+  const onSubmitPassword = async (data) => {
+    try {
+      setIsUpdating(true);
+      const response = await apis.apiChangeUserPassword({
+        password: data.currentPassword,
+        newPassword: data.newPassword,
+      });
+      toast.success(response?.msg || "Đổi mật khẩu thành công!");
+      resetPassword(); // Reset form sau khi đổi thành công
+      setShowPasswordSection(false); // Ẩn section đổi mật khẩu
+    } catch (error) {
+      toast.error(error?.msg || "Có lỗi xảy ra khi đổi mật khẩu.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const togglePasswordVisibility = (field) => {
+    setShowPasswords((prev) => ({
+      ...prev,
+      [field]: !prev[field],
+    }));
   };
 
   if (isLoadingUser) {
@@ -123,7 +163,8 @@ const UserProfile = () => {
         </div>
 
         <div className="p-4 sm:p-6">
-          <form onSubmit={handleSubmit(onSubmit)}>
+          {/* Form cập nhật hồ sơ */}
+          <form onSubmit={handleSubmit(onSubmitProfile)}>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
               <div className="flex flex-col items-center">
                 <label
@@ -257,6 +298,113 @@ const UserProfile = () => {
               </button>
             </div>
           </form>
+
+          {/* Section đổi mật khẩu */}
+          <div className="mt-8">
+            <button
+              onClick={() => setShowPasswordSection(!showPasswordSection)}
+              className="text-blue-500 hover:text-blue-700 font-medium text-sm"
+            >
+              {showPasswordSection ? "Ẩn đổi mật khẩu" : "Đổi mật khẩu"}
+            </button>
+
+            {showPasswordSection && (
+              <form
+                onSubmit={handleSubmitPassword(onSubmitPassword)}
+                className="mt-4 p-4 border rounded bg-gray-50"
+              >
+                <h3 className="text-lg font-semibold mb-4">Đổi mật khẩu</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[
+                    {
+                      label: "Mật khẩu hiện tại",
+                      name: "currentPassword",
+                      field: "current",
+                    },
+                    {
+                      label: "Mật khẩu mới",
+                      name: "newPassword",
+                      field: "new",
+                    },
+                    {
+                      label: "Xác nhận mật khẩu mới",
+                      name: "confirmNewPassword",
+                      field: "confirm",
+                    },
+                  ].map((field) => (
+                    <div key={field.name} className="relative">
+                      <label
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                        htmlFor={field.name}
+                      >
+                        {field.label}
+                      </label>
+                      <input
+                        id={field.name}
+                        type={showPasswords[field.field] ? "text" : "password"}
+                        {...registerPassword(field.name)}
+                        className={`w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          passwordErrors[field.name]
+                            ? "border-red-500"
+                            : "border-gray-300"
+                        } ${isUpdating ? "bg-gray-100" : ""}`}
+                        disabled={isUpdating}
+                        aria-label={field.label}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => togglePasswordVisibility(field.field)}
+                        className="absolute right-3 top-10 text-gray-500 hover:text-gray-700"
+                        aria-label={
+                          showPasswords[field.field]
+                            ? "Ẩn mật khẩu"
+                            : "Hiện mật khẩu"
+                        }
+                      >
+                        {showPasswords[field.field] ? (
+                          <EyeOff className="w-5 h-5" />
+                        ) : (
+                          <Eye className="w-5 h-5" />
+                        )}
+                      </button>
+                      {passwordErrors[field.name] && (
+                        <p className="text-red-500 text-xs mt-1">
+                          {passwordErrors[field.name].message}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetPassword();
+                      setShowPasswordSection(false);
+                    }}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isUpdating}
+                    className={`px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed text-sm transition-colors cursor-pointer`}
+                    aria-label="Đổi mật khẩu"
+                  >
+                    {isUpdating ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Đang xử lý...
+                      </>
+                    ) : (
+                      "Đổi mật khẩu"
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
       </div>
     </div>
